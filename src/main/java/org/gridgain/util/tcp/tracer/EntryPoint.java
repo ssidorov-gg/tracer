@@ -15,23 +15,25 @@ public class EntryPoint {
     private static final String NODE_COUNT = "nodes";
     private static final String MULTICAST_GROUP = "group";
     private static final String MULTICAST_PORT = "port";
-    private static final String TIMEOUT = "timeout";
+    private static final String TTL = "ttl";
+    private static final String SOCK_ITF = "sockItf";
 
     public static void main(String[] args) {
         Opts opts = parseOptions(args);
 
-        Sender sender = new Sender(opts.ip, opts.port, opts.timeout);
-        Thread senderThread = new Thread(sender::start);
-
         CountDownLatch nodesCounter = new CountDownLatch(opts.nodes);
-        Receiver receiver = new Receiver(opts.ip, opts.port, nodesCounter);
-        Thread receiverThread = new Thread(receiver::start);
+
+        MulticastInitiator initiator = new MulticastInitiator(opts.ip, opts.port, nodesCounter);
+        Thread initiatorThread = new Thread(initiator::work);
+
+        MulticastClient client = new MulticastClient(opts.ip, opts.port);
+        Thread clientThread = new Thread(client::work);
 
         System.out.println("Tool starts with next parameters:");
         System.out.println(opts.toString());
 
-        senderThread.start();
-        receiverThread.start();
+        initiatorThread.start();
+        clientThread.start();
 
         while (true) {
             boolean passed = false;
@@ -44,14 +46,13 @@ public class EntryPoint {
 
             if (passed) {
                 System.out.println("SUCCESS: Packets from all nodes received");
-                System.out.println("Type 'y' to continue receiving packets or 'n' to exit");
-
-                if (userChoice()) {
-                    System.out.println("continue sending/receiving packets. press enter to exit");
-                    userAnyKey();
+                System.out.println("Waiting for other nodes (10 minutes)...");
+                try {
+                    TimeUnit.MINUTES.sleep(10);
+                } catch (InterruptedException e) {
+                    //
                 }
-
-                System.out.println("switching off...");
+                System.exit(0);
                 break;
             } else {
                 System.out.println(String.format("FAIL: Time is over, expected nodes: %d, actual nodes: %d",
@@ -61,24 +62,23 @@ public class EntryPoint {
                 if (userChoice()) {
                     continue;
                 } else {
-                    break;
+                    System.exit(0);
                 }
             }
         }
 
-        receiver.stop();
-        sender.stop();
+        initiator.stop();
 
         try {
-            receiverThread.interrupt();
-            receiverThread.join();
+            clientThread.interrupt();
+            clientThread.join();
         } catch (InterruptedException e) {
             System.out.println(e.getMessage());
         }
 
         try {
-            receiverThread.interrupt();
-            senderThread.join();
+            initiatorThread.interrupt();
+            initiatorThread.join();
         } catch (InterruptedException e) {
             System.out.println(e.getMessage());
         }
@@ -99,14 +99,6 @@ public class EntryPoint {
         }
     }
 
-    private static void userAnyKey() {
-        try {
-            System.in.read();
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
-        }
-    }
-
     private static Opts parseOptions(String[] args) {
         final OptionParser parser = new OptionParser();
         final OptionSpec<Void> help = parser.accepts(HELP, "show help").forHelp();
@@ -118,8 +110,8 @@ public class EntryPoint {
         final OptionSpec<Integer> port = parser
                 .accepts(MULTICAST_PORT, "set up multicast port, optional, default value 47400").withRequiredArg()
                 .ofType(Integer.class);
-        OptionSpec<Integer> timeout = parser.accepts(TIMEOUT, "timeout (in seconds) between packets (server mode)")
-                .withRequiredArg().ofType(Integer.class);
+        OptionSpec<Integer> ttl = parser.accepts(TTL, "ttl").withRequiredArg().ofType(Integer.class);
+        OptionSpec<String> sockItf = parser.accepts(SOCK_ITF, "socket interface").withRequiredArg().ofType(String.class);
 
         OptionSet options;
 
@@ -144,7 +136,11 @@ public class EntryPoint {
         opts.ip = options.has(multicastGroup) ? multicastGroup.value(options) : MulticastAdapter.DFLT_MCAST_GROUP;
         opts.port = options.has(port) ? port.value(options) : MulticastAdapter.DFLT_MCAST_PORT;
 
-        opts.timeout = options.has(timeout) ? timeout.value(options) : MulticastAdapter.DFLT_TIMEOUT;
+        if (options.has(ttl))
+            opts.ttl = ttl.value(options);
+
+        if (options.has(sockItf))
+            opts.sockItf = sockItf.value(options);
 
         return opts;
     }
@@ -166,14 +162,21 @@ public class EntryPoint {
         private int nodes;
         private String ip;
         private int port;
-        private int timeout;
+        private int ttl = -1;
+        private String sockItf;
 
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append("expected nodes: ").append(nodes).append(", ");
             sb.append("multicast group: ").append(ip).append(", ");
-            sb.append("multicast port: ").append(port).append(", ");
+            sb.append("multicast port: ").append(port);
+
+            if (ttl != -1)
+                sb.append(", ").append("ttl: ").append(ttl);
+
+            if (sockItf != null)
+                sb.append(", ").append("sockItf: ").append(sockItf);
 
             return sb.toString();
         }

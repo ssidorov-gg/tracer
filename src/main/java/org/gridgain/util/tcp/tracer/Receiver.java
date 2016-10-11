@@ -11,6 +11,7 @@ import java.util.concurrent.CountDownLatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Deprecated
 public class Receiver extends MulticastAdapter {
     private static final Logger LOG = LoggerFactory.getLogger(Receiver.class);
 
@@ -25,7 +26,7 @@ public class Receiver extends MulticastAdapter {
 
     @Override
     protected void doWork(MulticastSocket socket) throws Exception {
-        byte[] buf = new byte[20];
+        byte[] buf = new byte[200];
 
         DatagramPacket msgPacket = new DatagramPacket(buf, buf.length);
 
@@ -39,13 +40,13 @@ public class Receiver extends MulticastAdapter {
         String msg = new String(buf, 0, msgPacket.getLength());
 
         // filter
-        if (!msg.contains("|")) {
+        if (!msg.contains(";")) {
             return;
         }
 
-        String address = msgPacket.getAddress().getHostAddress();
+        String uuid = msg.split(";")[0];
 
-        if (nodes.add(address)) {
+        if (nodes.add(uuid)) {
             nodesCounter.countDown();
         }
 

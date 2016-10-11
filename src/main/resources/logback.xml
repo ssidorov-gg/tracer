@@ -1,33 +1,33 @@
 <?xml version="1.0"?>
 <configuration>
 
-    <appender name="SENDER" class="ch.qos.logback.core.FileAppender">
-        <file>tracer-sender.log</file>
+    <appender name="SERVER" class="ch.qos.logback.core.FileAppender">
+        <file>tracer-server.log</file>
         <append>true</append>
         <encoder>
             <pattern>%date - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <appender name="RECEIVER" class="ch.qos.logback.core.FileAppender">
-        <file>tracer-receiver.log</file>
+    <appender name="CLIENT" class="ch.qos.logback.core.FileAppender">
+        <file>tracer-client.log</file>
         <append>true</append>
         <encoder>
             <pattern>%date - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <logger name="org.gridgain.util.tcp.tracer.Sender" level="INFO" additivity="false">
-        <appender-ref ref="SENDER" />
+    <logger name="org.gridgain.util.tcp.tracer.MulticastInitiator" level="INFO" additivity="false">
+        <appender-ref ref="SERVER" />
     </logger>
 
-    <logger name="org.gridgain.util.tcp.tracer.Receiver" level="INFO" additivity="false">
-        <appender-ref ref="RECEIVER" />
+    <logger name="org.gridgain.util.tcp.tracer.MulticastClient" level="INFO" additivity="false">
+        <appender-ref ref="CLIENT" />
     </logger>
 
     <root level="INFO">
-        <appender-ref ref="SENDER" />
-        <appender-ref ref="RECEIVER" />
+        <appender-ref ref="SERVER" />
+        <appender-ref ref="CLIENT" />
     </root>
 
 </configuration>
