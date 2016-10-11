@@ -35,12 +35,16 @@ public class MulticastClient {
 
         DatagramPacket pckt = new DatagramPacket(reqData, reqData.length);
 
+        MulticastSocket sock;
+
+        try {
+            sock = createSocket();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
         while (!Thread.currentThread().isInterrupted()) {
-            MulticastSocket sock = null;
-
             try {
-                sock = createSocket();
-
                 sock.receive(pckt);
 
                 String reqMsg = new String(pckt.getData(), 0, pckt.getLength());
