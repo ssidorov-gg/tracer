@@ -32,6 +32,7 @@ public class MulticastInitiator {
     private final int nodeCount;
 
     private long sequence = 0;
+    private volatile int currentNodeCount = 0;
 
     private volatile boolean started;
 
@@ -107,6 +108,7 @@ public class MulticastInitiator {
                         String clientUUID = msg.split(";")[1];
 
                         if (nodes.add(clientUUID)) {
+                            currentNodeCount++;
                             if (nodes.size() == nodeCount) {
                                 System.out.println("SUCCESS: Packets from all nodes received");
                             }
@@ -148,6 +150,6 @@ public class MulticastInitiator {
     }
 
     public int getCurrentNodes() {
-        return nodes.size();
+        return currentNodeCount;
     }
 }
