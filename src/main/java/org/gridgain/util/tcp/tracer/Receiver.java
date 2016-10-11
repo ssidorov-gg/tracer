@@ -4,11 +4,23 @@ import java.net.DatagramPacket;
 import java.net.MulticastSocket;
 import java.net.SocketTimeoutException;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Receiver extends MulticastAdapter {
+    private static final Logger LOG = LoggerFactory.getLogger(Receiver.class);
 
-    public Receiver(String mcastGrp, int mcastPort) {
+    private CountDownLatch nodesCounter;
+
+    private Set<String> nodes = new HashSet<>();
+
+    public Receiver(String mcastGrp, int mcastPort, CountDownLatch nodesCounter) {
         super(mcastGrp, mcastPort);
+        this.nodesCounter = nodesCounter;
     }
 
     @Override
@@ -24,8 +36,19 @@ public class Receiver extends MulticastAdapter {
             return;
         }
 
-        String msg = new String(buf, 0, buf.length);
+        String msg = new String(buf, 0, msgPacket.getLength());
 
-        System.out.println(String.format("Receive multicast packet at %s: %s from ip: %s", df.format(new Date()), msg, msgPacket.getAddress()));
+        // filter
+        if (!msg.contains("|")) {
+            return;
+        }
+
+        String address = msgPacket.getAddress().getHostAddress();
+
+        if (nodes.add(address)) {
+            nodesCounter.countDown();
+        }
+
+        LOG.info("Receive multicast packet at {} from ip {}, message: {}", df.format(new Date()), msgPacket.getAddress(), msg);
     }
 }
