@@ -64,10 +64,10 @@ public class MulticastClient {
                 }
             } catch (IOException e) {
                 System.err.println("Error " + e.getMessage());
-            } finally {
-                sock.close();
             }
         }
+
+        sock.close();
     }
 
     private String createResponse(String request) {
