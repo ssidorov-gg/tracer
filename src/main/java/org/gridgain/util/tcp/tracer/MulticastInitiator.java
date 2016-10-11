@@ -12,7 +12,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -30,16 +29,16 @@ public class MulticastInitiator {
 
     private final String serverUUID = UUID.randomUUID().toString();
     private final Set<String> nodes = new HashSet<>();
-    private CountDownLatch nodesCounter;
+    private final int nodeCount;
 
     private long sequence = 0;
 
     private volatile boolean started;
 
-    public MulticastInitiator(String mcastGrp, int mcastPort, CountDownLatch nodesCounter) {
+    public MulticastInitiator(String mcastGrp, int mcastPort, int nodeCount) {
         this.mcastGrp = mcastGrp;
         this.mcastPort = mcastPort;
-        this.nodesCounter = nodesCounter;
+        this.nodeCount = nodeCount;
     }
 
     public void work() {
@@ -108,7 +107,9 @@ public class MulticastInitiator {
                         String clientUUID = msg.split(";")[1];
 
                         if (nodes.add(clientUUID)) {
-                            nodesCounter.countDown();
+                            if (nodes.size() == nodeCount) {
+                                System.out.println("SUCCESS: Packets from all nodes received");
+                            }
                         }
                     }
                 } catch (SocketTimeoutException ignored) {
@@ -144,5 +145,9 @@ public class MulticastInitiator {
 
     public void setSockItf(String sockItf) {
         this.sockItf = sockItf;
+    }
+
+    public int getCurrentNodes() {
+        return nodes.size();
     }
 }

@@ -1,8 +1,6 @@
 package org.gridgain.util.tcp.tracer;
 
 import java.io.IOException;
-import java.util.Scanner;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import joptsimple.OptionParser;
@@ -21,9 +19,7 @@ public class EntryPoint {
     public static void main(String[] args) {
         Opts opts = parseOptions(args);
 
-        CountDownLatch nodesCounter = new CountDownLatch(opts.nodes);
-
-        MulticastInitiator initiator = new MulticastInitiator(opts.ip, opts.port, nodesCounter);
+        MulticastInitiator initiator = new MulticastInitiator(opts.ip, opts.port, opts.nodes);
         Thread initiatorThread = new Thread(initiator::work);
 
         MulticastClient client = new MulticastClient(opts.ip, opts.port);
@@ -31,71 +27,47 @@ public class EntryPoint {
 
         System.out.println("Tool starts with next parameters:");
         System.out.println(opts.toString());
+        System.out.println("Press Ctrl+C to exit");
 
         initiatorThread.start();
         clientThread.start();
 
-        while (true) {
-            boolean passed = false;
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                System.out.println("shutting down tracer...");
 
-            try {
-                passed = nodesCounter.await(1, TimeUnit.MINUTES);
-            } catch (InterruptedException e) {
-                //
-            }
+                initiator.stop();
 
-            if (passed) {
-                System.out.println("SUCCESS: Packets from all nodes received");
-                System.out.println("Waiting for other nodes (10 minutes)...");
                 try {
-                    TimeUnit.MINUTES.sleep(10);
+                    clientThread.interrupt();
+                    clientThread.join(10000);
                 } catch (InterruptedException e) {
-                    //
+                    System.out.println(e.getMessage());
                 }
-                System.exit(0);
-                break;
-            } else {
-                System.out.println(String.format("FAIL: Time is over, expected nodes: %d, actual nodes: %d",
-                        opts.nodes, nodesCounter.getCount()));
-                System.out.println("Type 'y' to wait another 10 minutes or 'n' to exit");
 
-                if (userChoice()) {
-                    continue;
-                } else {
-                    System.exit(0);
+                try {
+                    initiatorThread.interrupt();
+                    initiatorThread.join(10000);
+                } catch (InterruptedException e) {
+                    System.out.println(e.getMessage());
                 }
+
+                System.out.println("finished");
             }
-        }
-
-        initiator.stop();
+        });
 
         try {
-            clientThread.interrupt();
-            clientThread.join();
+            TimeUnit.MINUTES.sleep(10);
+
+            int currentNodes = initiator.getCurrentNodes();
+
+            if (currentNodes != opts.nodes) {
+                System.err.println(String.format("FAIL: Time is over, expected nodes: %d, actual nodes: %d",
+                        opts.nodes, currentNodes));
+            }
         } catch (InterruptedException e) {
-            System.out.println(e.getMessage());
-        }
-
-        try {
-            initiatorThread.interrupt();
-            initiatorThread.join();
-        } catch (InterruptedException e) {
-            System.out.println(e.getMessage());
-        }
-
-        System.out.println("finished");
-    }
-
-    @SuppressWarnings("resource")
-    private static boolean userChoice() {
-        Scanner scan = new Scanner(System.in);
-
-        String answer = scan.nextLine();
-
-        if (answer.equals("y")) {
-            return true;
-        } else {
-            return false;
+            //
         }
     }
 
