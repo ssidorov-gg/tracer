@@ -125,7 +125,7 @@ public class MulticastInitiator extends Thread {
     }
 
     private String getMessage() {
-        return String.format("REQ;%s;#%s;%s;%d", serverUUID, instanceNum, df.format(new Date()), sequence++);
+        return String.format("REQ;%s;%s,#%s;%s;%d", serverUUID, sockItf, instanceNum, df.format(new Date()), sequence++);
     }
 
     public void setTtl(int ttl) {

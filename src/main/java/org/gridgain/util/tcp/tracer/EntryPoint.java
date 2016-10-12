@@ -210,7 +210,7 @@ public class EntryPoint {
     private static void printHelp(final OptionParser parser) {
         try {
             System.out.println("Usage:");
-            System.out.println("java -jar tracer.jar --nodes=4 [--group=228.1.2.4] [--port=47400] [--timeout=5]");
+            System.out.println("java -jar tracer.jar --nodes=4 [--group=228.1.2.4] [--port=47400]");
             System.out.println("Supported options:");
             parser.printHelpOn(System.out);
 

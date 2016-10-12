@@ -5,7 +5,7 @@
         <file>tracer-server.log</file>
         <append>true</append>
         <encoder>
-            <pattern>%date - %msg%n</pattern>
+            <pattern>%date [%thread] - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -13,7 +13,7 @@
         <file>tracer-client.log</file>
         <append>true</append>
         <encoder>
-            <pattern>%date - %msg%n</pattern>
+            <pattern>%date [%thread] - %msg%n</pattern>
         </encoder>
     </appender>
 

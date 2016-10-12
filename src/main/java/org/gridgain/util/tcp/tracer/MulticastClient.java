@@ -86,7 +86,7 @@ public class MulticastClient extends Thread {
     }
 
     private String createResponse(String request) {
-        return String.format("RES;%s;%s;%s", clientUUID, df.format(new Date()), request);
+        return String.format("RES;%s;%s;%s;%s", clientUUID, sockItf, df.format(new Date()), request);
     }
 
     private MulticastSocket createSocket() throws IOException {
