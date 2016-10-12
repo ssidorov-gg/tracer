@@ -19,11 +19,11 @@ public class EntryPoint {
     public static void main(String[] args) {
         Opts opts = parseOptions(args);
 
-        MulticastInitiator initiator = new MulticastInitiator(opts.ip, opts.port, opts.nodes);
-        Thread initiatorThread = new Thread(initiator::work);
+        final MulticastInitiator initiator = new MulticastInitiator(opts.ip, opts.port, opts.nodes);
+        final Thread initiatorThread = new Thread(initiator);
 
-        MulticastClient client = new MulticastClient(opts.ip, opts.port);
-        Thread clientThread = new Thread(client::work);
+        final MulticastClient client = new MulticastClient(opts.ip, opts.port);
+        final Thread clientThread = new Thread(client);
 
         System.out.println("Tool starts with next parameters:");
         System.out.println(opts.toString());

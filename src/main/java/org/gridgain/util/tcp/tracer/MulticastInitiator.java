@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MulticastInitiator {
+public class MulticastInitiator implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(MulticastInitiator.class);
 
     protected final DateFormat df = new SimpleDateFormat("HH:mm:ss.SSS");
@@ -42,7 +42,8 @@ public class MulticastInitiator {
         this.nodeCount = nodeCount;
     }
 
-    public void work() {
+    @Override
+    public void run() {
         started = true;
 
         while (started) {
@@ -50,7 +51,8 @@ public class MulticastInitiator {
 
             byte[] packetData = message.getBytes();
 
-            DatagramPacket reqPckt = new DatagramPacket(packetData, packetData.length, toInetAddress(mcastGrp), mcastPort);
+            DatagramPacket reqPckt = new DatagramPacket(packetData, packetData.length, toInetAddress(mcastGrp),
+                    mcastPort);
 
             byte[] resData = new byte[200];
 

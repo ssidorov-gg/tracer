@@ -13,7 +13,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MulticastClient {
+public class MulticastClient implements Runnable {
     private static final Logger LOGGER = LoggerFactory.getLogger(MulticastClient.class);
 
     protected final DateFormat df = new SimpleDateFormat("HH:mm:ss.SSS");
@@ -30,7 +30,8 @@ public class MulticastClient {
         this.mcastPort = mcastPort;
     }
 
-    public void work() {
+    @Override
+    public void run() {
         byte[] reqData = new byte[200];
 
         DatagramPacket pckt = new DatagramPacket(reqData, reqData.length);
