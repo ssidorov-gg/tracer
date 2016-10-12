@@ -17,12 +17,31 @@
         </encoder>
     </appender>
 
+    <appender name="RESULT" class="ch.qos.logback.core.FileAppender">
+        <file>tracer-result.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%date - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%msg%n</pattern>
+        </encoder>
+    </appender>
+
     <logger name="org.gridgain.util.tcp.tracer.MulticastInitiator" level="INFO" additivity="false">
         <appender-ref ref="SERVER" />
     </logger>
 
     <logger name="org.gridgain.util.tcp.tracer.MulticastClient" level="INFO" additivity="false">
         <appender-ref ref="CLIENT" />
+    </logger>
+
+    <logger name="result" level="INFO" additivity="false">
+        <appender-ref ref="RESULT" />
+        <appender-ref ref="CONSOLE" />
     </logger>
 
     <root level="INFO">

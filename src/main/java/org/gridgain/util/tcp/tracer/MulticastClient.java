@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
-import java.net.UnknownHostException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -13,21 +12,23 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MulticastClient implements Runnable {
+public class MulticastClient extends Thread {
     private static final Logger LOGGER = LoggerFactory.getLogger(MulticastClient.class);
 
     protected final DateFormat df = new SimpleDateFormat("HH:mm:ss.SSS");
 
-    private String mcastGrp;
+    private InetAddress mcastGrp;
     private int mcastPort;
     private int ttl = -1;
-    private String sockItf;
+    private InetAddress sockItf;
 
-    private final String clientUUID = UUID.randomUUID().toString();
+    private static final String clientUUID = UUID.randomUUID().toString();
 
-    public MulticastClient(String mcastGrp, int mcastPort) {
+    public MulticastClient(InetAddress mcastGrp, InetAddress sockItf, int mcastPort, int ttl) {
         this.mcastGrp = mcastGrp;
+        this.sockItf = sockItf;
         this.mcastPort = mcastPort;
+        this.ttl = ttl;
     }
 
     @Override
@@ -82,9 +83,9 @@ public class MulticastClient implements Runnable {
                                      // than one node on the same machine.
 
         if (sockItf != null)
-            sock.setInterface(toInetAddress(sockItf));
+            sock.setInterface(sockItf);
 
-        sock.joinGroup(toInetAddress(mcastGrp));
+        sock.joinGroup(mcastGrp);
 
         if (ttl != -1)
             sock.setTimeToLive(ttl);
@@ -92,19 +93,7 @@ public class MulticastClient implements Runnable {
         return sock;
     }
 
-    private InetAddress toInetAddress(String address) {
-        try {
-            return InetAddress.getByName(address);
-        } catch (UnknownHostException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public void setTtl(int ttl) {
         this.ttl = ttl;
-    }
-
-    public void setSockItf(String sockItf) {
-        this.sockItf = sockItf;
     }
 }

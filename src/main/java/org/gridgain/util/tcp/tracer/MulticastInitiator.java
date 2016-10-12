@@ -5,13 +5,13 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -22,24 +22,25 @@ public class MulticastInitiator implements Runnable {
 
     protected final DateFormat df = new SimpleDateFormat("HH:mm:ss.SSS");
 
-    private String mcastGrp;
+    private InetAddress mcastGrp;
     private int mcastPort;
     private int ttl = -1;
-    private String sockItf;
+    private InetAddress sockItf;
 
     private final String serverUUID = UUID.randomUUID().toString();
     private final Set<String> nodes = new HashSet<>();
-    private final int nodeCount;
+    private final CountDownLatch nodeCounter;
 
     private long sequence = 0;
-    private volatile int currentNodeCount = 0;
 
     private volatile boolean started;
 
-    public MulticastInitiator(String mcastGrp, int mcastPort, int nodeCount) {
+    public MulticastInitiator(InetAddress mcastGrp, InetAddress sockItf, int mcastPort, int ttl, CountDownLatch nodeCounter) {
         this.mcastGrp = mcastGrp;
+        this.sockItf = sockItf;
         this.mcastPort = mcastPort;
-        this.nodeCount = nodeCount;
+        this.ttl = ttl;
+        this.nodeCounter = nodeCounter;
     }
 
     @Override
@@ -51,8 +52,7 @@ public class MulticastInitiator implements Runnable {
 
             byte[] packetData = message.getBytes();
 
-            DatagramPacket reqPckt = new DatagramPacket(packetData, packetData.length, toInetAddress(mcastGrp),
-                    mcastPort);
+            DatagramPacket reqPckt = new DatagramPacket(packetData, packetData.length, mcastGrp, mcastPort);
 
             byte[] resData = new byte[200];
 
@@ -68,7 +68,7 @@ public class MulticastInitiator implements Runnable {
                 sock.setLoopbackMode(false);
 
                 if (sockItf != null)
-                    sock.setInterface(toInetAddress(sockItf));
+                    sock.setInterface(sockItf);
 
                 sock.setSoTimeout((int) TimeUnit.SECONDS.toMillis(10));
 
@@ -110,10 +110,7 @@ public class MulticastInitiator implements Runnable {
                         String clientUUID = msg.split(";")[1];
 
                         if (nodes.add(clientUUID)) {
-                            currentNodeCount++;
-                            if (nodes.size() == nodeCount) {
-                                System.out.println("SUCCESS: Packets from all nodes received");
-                            }
+                            nodeCounter.countDown();
                         }
                     }
                 } catch (SocketTimeoutException ignored) {
@@ -135,23 +132,7 @@ public class MulticastInitiator implements Runnable {
         return String.format("REQ;%s;%s;%d", serverUUID, df.format(new Date()), sequence++);
     }
 
-    private InetAddress toInetAddress(String address) {
-        try {
-            return InetAddress.getByName(address);
-        } catch (UnknownHostException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public void setTtl(int ttl) {
         this.ttl = ttl;
-    }
-
-    public void setSockItf(String sockItf) {
-        this.sockItf = sockItf;
-    }
-
-    public int getCurrentNodes() {
-        return currentNodeCount;
     }
 }
