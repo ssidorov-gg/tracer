@@ -13,11 +13,12 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MulticastInitiator implements Runnable {
+public class MulticastInitiator extends Thread {
     private static final Logger LOG = LoggerFactory.getLogger(MulticastInitiator.class);
 
     protected final DateFormat df = new SimpleDateFormat("HH:mm:ss.SSS");
@@ -27,13 +28,13 @@ public class MulticastInitiator implements Runnable {
     private int ttl = -1;
     private InetAddress sockItf;
 
-    private final String serverUUID = UUID.randomUUID().toString();
-    private final Set<String> nodes = new HashSet<>();
+    private static final String serverUUID = UUID.randomUUID().toString();
+    protected static final Set<String> nodes = new HashSet<>();
     private final CountDownLatch nodeCounter;
 
     private long sequence = 0;
-
-    private volatile boolean started;
+    private static AtomicInteger instance = new AtomicInteger(-1);
+    private final int instanceNum;
 
     public MulticastInitiator(InetAddress mcastGrp, InetAddress sockItf, int mcastPort, int ttl, CountDownLatch nodeCounter) {
         this.mcastGrp = mcastGrp;
@@ -41,13 +42,12 @@ public class MulticastInitiator implements Runnable {
         this.mcastPort = mcastPort;
         this.ttl = ttl;
         this.nodeCounter = nodeCounter;
+        this.instanceNum = instance.incrementAndGet();
     }
 
     @Override
     public void run() {
-        started = true;
-
-        while (started) {
+        while (!Thread.currentThread().isInterrupted()) {
             String message = getMessage();
 
             byte[] packetData = message.getBytes();
@@ -124,12 +124,8 @@ public class MulticastInitiator implements Runnable {
         }
     }
 
-    public void stop() {
-        started = false;
-    }
-
     private String getMessage() {
-        return String.format("REQ;%s;%s;%d", serverUUID, df.format(new Date()), sequence++);
+        return String.format("REQ;%s;#%s;%s;%d", serverUUID, instanceNum, df.format(new Date()), sequence++);
     }
 
     public void setTtl(int ttl) {

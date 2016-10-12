@@ -43,43 +43,39 @@ public class EntryPoint {
 
         LOG.info("Startup parameters: {}", startupParams);
 
-        System.out.println("Press Ctrl+C to exit");
+        CountDownLatch responseCounter = new CountDownLatch(opts.nodes);
+        CountDownLatch requestsCounter = new CountDownLatch(opts.nodes);
 
-        final List<MulticastClient> clients = startClients(opts);
-
-        CountDownLatch nodesCounter = new CountDownLatch(opts.nodes);
-
-        final MulticastInitiator initiator = new MulticastInitiator(opts.ip, opts.sockItf, opts.port, opts.ttl, nodesCounter);
-        final Thread initiatorThread = new Thread(initiator);
-        initiatorThread.start();
+        final List<Thread> clients = startClients(opts, requestsCounter);
+        final List<Thread> servers = startServers(opts, responseCounter);
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
                 System.out.println("shutting down tracer...");
 
-                initiator.stop();
-
-                stopClients(clients);
-
-                try {
-                    initiatorThread.interrupt();
-                    initiatorThread.join(10000);
-                } catch (InterruptedException e) {
-                    System.out.println(e.getMessage());
-                }
+                stopWorkers(clients);
+                stopWorkers(servers);
 
                 System.out.println("finished");
             }
         });
 
         try {
-            boolean success = nodesCounter.await(opts.testTime, TimeUnit.MINUTES);
+            boolean success = responseCounter.await(opts.testTime, TimeUnit.MINUTES);
 
             if (success) {
-                LOG.info("SUCCESS: Packets from all nodes received");
+                LOG.info("SUCCESS: Response from all nodes received");
             } else {
-                LOG.info("FAIL: Time is over, expected nodes: {}, actual nodes: {}", opts.nodes, nodesCounter.getCount());
+                LOG.info("FAIL: Time is over, not all responses received. Expected nodes: {}, actual nodes: {}", opts.nodes, responseCounter.getCount());
+            }
+
+            success = requestsCounter.await(opts.testTime, TimeUnit.MINUTES);
+
+            if (success) {
+                LOG.info("SUCCESS: Requests from all nodes received");
+            } else {
+                LOG.info("FAIL: Time is over, not all requests received. Expected nodes: {}, actual nodes: {}", opts.nodes, responseCounter.getCount());
             }
 
             System.exit(0);
@@ -88,11 +84,11 @@ public class EntryPoint {
         }
     }
 
-    private static List<MulticastClient> startClients(Opts opts) {
-        List<MulticastClient> clients = new ArrayList<>(opts.localAddrs.size());
+    private static List<Thread> startClients(Opts opts, CountDownLatch nodesCounter) {
+        List<Thread> clients = new ArrayList<>(opts.localAddrs.size());
 
         for (InetAddress locAddr : opts.localAddrs) {
-            MulticastClient client = new MulticastClient(opts.ip, locAddr, opts.port, opts.ttl);
+            MulticastClient client = new MulticastClient(opts.ip, locAddr, opts.port, opts.ttl, nodesCounter);
 
             client.start();
 
@@ -102,14 +98,28 @@ public class EntryPoint {
         return clients;
     }
 
-    private static void stopClients(List<MulticastClient> clients) {
-        for (MulticastClient client : clients) {
-            client.interrupt();
+    private static List<Thread> startServers(Opts opts, CountDownLatch nodesCounter) {
+        List<Thread> servers = new ArrayList<>(opts.localAddrs.size());
+
+        for (InetAddress locAddr : opts.localAddrs) {
+            final MulticastInitiator server = new MulticastInitiator(opts.ip, locAddr, opts.port, opts.ttl, nodesCounter);
+
+            server.start();
+
+            servers.add(server);
         }
 
-        for (MulticastClient client : clients) {
+        return servers;
+    }
+
+    private static void stopWorkers(List<Thread> workers) {
+        for (Thread worker : workers) {
+            worker.interrupt();
+        }
+
+        for (Thread worker : workers) {
             try {
-                client.join(10000);
+                worker.join(10000);
             } catch (InterruptedException e) {
                 System.err.println(e.getMessage());
             }
@@ -136,7 +146,6 @@ public class EntryPoint {
                 .accepts(MULTICAST_PORT, "set up multicast port, optional, default value 47400").withRequiredArg()
                 .ofType(Integer.class);
         OptionSpec<Integer> ttl = parser.accepts(TTL, "ttl").withRequiredArg().ofType(Integer.class);
-        OptionSpec<String> sockItf = parser.accepts(SOCK_ITF, "socket interface").withRequiredArg().ofType(String.class);
         OptionSpec<String> localAddr = parser.accepts(LOCAL_ADDR, "local address").withRequiredArg().ofType(String.class);
         OptionSpec<Integer> testTime = parser.accepts(TEST_TIME, "time of the test in minutes").withRequiredArg().ofType(Integer.class);
 
@@ -165,9 +174,6 @@ public class EntryPoint {
 
         if (options.has(ttl))
             opts.ttl = ttl.value(options);
-
-        if (options.has(sockItf))
-            opts.sockItf = toInetAddress(sockItf.value(options));
 
         String lAddr = null;
 
@@ -219,7 +225,6 @@ public class EntryPoint {
         private InetAddress ip;
         private int port;
         private int ttl = -1;
-        private InetAddress sockItf;
         private Collection<InetAddress> localAddrs;
         private int testTime = 10;
 
@@ -248,10 +253,6 @@ public class EntryPoint {
 
             if (ttl != -1)
                 sb.append("; ").append("ttl: ").append(ttl);
-
-            if (sockItf != null)
-                sb.append("; ").append("sockItf: ").append(sockItf);
-
 
             return sb.toString();
         }

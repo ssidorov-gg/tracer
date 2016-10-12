@@ -7,7 +7,10 @@ import java.net.MulticastSocket;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,14 +24,18 @@ public class MulticastClient extends Thread {
     private int mcastPort;
     private int ttl = -1;
     private InetAddress sockItf;
+    private CountDownLatch nodeCounter;
+
+    protected static final Set<String> nodes = new HashSet<>();
 
     private static final String clientUUID = UUID.randomUUID().toString();
 
-    public MulticastClient(InetAddress mcastGrp, InetAddress sockItf, int mcastPort, int ttl) {
+    public MulticastClient(InetAddress mcastGrp, InetAddress sockItf, int mcastPort, int ttl, CountDownLatch nodeCounter) {
         this.mcastGrp = mcastGrp;
         this.sockItf = sockItf;
         this.mcastPort = mcastPort;
         this.ttl = ttl;
+        this.nodeCounter = nodeCounter;
     }
 
     @Override
@@ -57,6 +64,12 @@ public class MulticastClient extends Thread {
                 }
 
                 LOGGER.info(reqMsg);
+
+                String clientUUID = reqMsg.split(";")[1];
+
+                if (nodes.add(clientUUID)) {
+                    nodeCounter.countDown();
+                }
 
                 try {
                     String resMsg = createResponse(reqMsg);
