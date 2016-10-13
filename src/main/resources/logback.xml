@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
 <configuration>
+    <property name="FILE_PREFIX" value="${PID}-tracer" />
 
     <appender name="SERVER" class="ch.qos.logback.core.FileAppender">
-        <file>tracer-server.log</file>
+        <file>${FILE_PREFIX}-server.log</file>
         <append>true</append>
         <encoder>
             <pattern>%date [%thread] - %msg%n</pattern>
@@ -10,7 +11,7 @@
     </appender>
 
     <appender name="CLIENT" class="ch.qos.logback.core.FileAppender">
-        <file>tracer-client.log</file>
+        <file>${FILE_PREFIX}-client.log</file>
         <append>true</append>
         <encoder>
             <pattern>%date [%thread] - %msg%n</pattern>
@@ -18,7 +19,7 @@
     </appender>
 
     <appender name="RESULT" class="ch.qos.logback.core.FileAppender">
-        <file>tracer-result.log</file>
+        <file>${FILE_PREFIX}-result.log</file>
         <append>true</append>
         <encoder>
             <pattern>%date - %msg%n</pattern>

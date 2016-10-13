@@ -1,6 +1,7 @@
 package org.gridgain.util.tcp.tracer;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -20,6 +21,10 @@ import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 
 public class EntryPoint {
+    static {
+        System.getProperties().setProperty("PID", ManagementFactory.getRuntimeMXBean().getName());
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger("result");
 
     private static final String HELP = "?";
@@ -28,7 +33,6 @@ public class EntryPoint {
     private static final String MULTICAST_GROUP = "group";
     private static final String MULTICAST_PORT = "port";
     private static final String TTL = "ttl";
-    private static final String SOCK_ITF = "sockItf";
     private static final String LOCAL_ADDR = "localAddr";
     private static final String TEST_TIME = "testTime";
 
